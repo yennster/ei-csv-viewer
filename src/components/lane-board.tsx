@@ -42,7 +42,6 @@ import type { XWindow } from "./lane-board.contract";
 import { Lane, UNASSIGNED_ID } from "./lane";
 import { ChannelChip, type MoveTarget } from "./channel-chip";
 import { LaneToolbar } from "./lane-toolbar";
-import { AxisFooter, AXIS_FOOTER_ID } from "./axis-footer";
 import { CropControls } from "./crop-controls";
 
 /** Module-level sync key — every lane joins this one cursor sync group. */
@@ -118,7 +117,6 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
     if (channels) for (const c of channels) map[c.id] = c;
     return map;
   }, [channels]);
-  const hasTime = !!(dataset?.time && dataset.time.length > 0);
 
   const unassignedChannels = React.useMemo(() => {
     if (!dataset) return [] as Channel[];
@@ -147,14 +145,6 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
   const unregisterChart = React.useCallback((laneId: string) => {
     uplotMap.current.delete(laneId);
   }, []);
-  const registerFooter = React.useCallback((u: uPlot) => {
-    uplotMap.current.set(AXIS_FOOTER_ID, u);
-  }, []);
-  const unregisterFooter = React.useCallback(() => {
-    uplotMap.current.delete(AXIS_FOOTER_ID);
-  }, []);
-  const resetXWindow = React.useCallback(() => setXWindow(null), [setXWindow]);
-
   // ---- x-window fan-out: drive every lane's x scale from the store ----
   // (UplotChart guards its own programmatic setScale so this never echoes.)
   React.useEffect(() => {
@@ -382,18 +372,8 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
             />
           </div>
 
-          {/* sticky shared x-axis ruler — every lane hides its own x-axis, so
-              this is the only place the time / sample-index scale is drawn */}
-          <AxisFooter
-            xs={xs}
-            xWindow={xWindow}
-            syncKey={SYNC_KEY}
-            gutterPx={56}
-            hasTime={hasTime}
-            onReady={registerFooter}
-            onDestroy={unregisterFooter}
-            onResetWindow={resetXWindow}
-          />
+          {/* The shared x-axis ruler is intentionally hidden — lanes share one
+              x-window and double-click resets the zoom to full extent. */}
 
           {/* crop apply/reset surface, only while crop mode is active (editor) */}
           {effectiveCrop ? <CropControls /> : null}
