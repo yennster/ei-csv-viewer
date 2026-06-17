@@ -28,15 +28,10 @@ function applyThemeClass(theme: "light" | "dark") {
 export function resolveInitialTheme(
   param: "light" | "dark" | undefined,
 ): "light" | "dark" {
-  if (param) return param;
-  if (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  ) {
-    return "dark";
-  }
-  return "light";
+  // Light by default. Only an explicit `theme` param overrides it; we no longer
+  // follow the OS preference, so first-time visitors always land on the light UI
+  // (the in-app toggle still switches it for the session).
+  return param ?? "light";
 }
 
 /**

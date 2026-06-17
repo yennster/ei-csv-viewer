@@ -16,6 +16,11 @@ import { ThemeProvider, resolveInitialTheme } from "@/components/theme";
 import { AppHeader } from "@/components/app-header";
 import { ConnectPanel } from "@/components/connect-panel";
 import { Editor } from "@/components/editor";
+import Link from "next/link";
+import { FileText, Github } from "lucide-react";
+
+/** Public source repository for this project. */
+export const REPO_URL = "https://github.com/yennster/ei-csv-viewer";
 
 export function AppRoot({ embed }: { embed: boolean }) {
   // Parse params exactly once. parseCurrentParams never throws and returns
@@ -45,7 +50,7 @@ export function AppRoot({ embed }: { embed: boolean }) {
   return (
     <ThemeProvider
       initialTheme={initialTheme}
-      followSystem={!params.theme}
+      followSystem={false}
     >
       <div className="flex h-dvh min-h-0 flex-col bg-bg text-fg">
         {!effectiveEmbed && <AppHeader />}
@@ -80,6 +85,25 @@ export function AppRoot({ embed }: { embed: boolean }) {
                       </li>
                     ))}
                   </ul>
+                  <div className="mt-6 flex items-center gap-3 text-xs text-fg-muted">
+                    <Link
+                      href="/url-parameters"
+                      className="inline-flex items-center gap-1.5 transition-colors hover:text-fg"
+                    >
+                      <FileText className="h-3.5 w-3.5" aria-hidden />
+                      URL parameters
+                    </Link>
+                    <span className="h-3 w-px bg-border" aria-hidden />
+                    <a
+                      href={REPO_URL}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1.5 transition-colors hover:text-fg"
+                    >
+                      <Github className="h-3.5 w-3.5" aria-hidden />
+                      GitHub
+                    </a>
+                  </div>
                 </div>
               )}
               <ConnectPanel params={params} />

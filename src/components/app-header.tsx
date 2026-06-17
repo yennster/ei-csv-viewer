@@ -6,7 +6,7 @@
 // theme toggle. This header is rendered ONLY in standalone mode; the embedded
 // route (embed=1) strips it so the lanes fill the iframe.
 
-import { Activity, Plug, Unplug } from "lucide-react";
+import { Activity, FileText, Github, Plug, Unplug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/lib/store";
 import { Button } from "@/components/ui/Button";
@@ -77,13 +77,33 @@ export function AppHeader() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <ConnectionBadge />
         {connection.status === "connected" && (
           <Button size="sm" variant="ghost" onClick={() => disconnect()}>
             Disconnect
           </Button>
         )}
+        <a
+          href="/url-parameters"
+          target="_blank"
+          rel="noreferrer noopener"
+          title="URL parameters reference"
+          className="hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-fg-muted hover:bg-surface-2 hover:text-fg sm:inline-flex"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          URL params
+        </a>
+        <a
+          href="https://github.com/yennster/ei-csv-viewer"
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label="View source on GitHub"
+          title="View source on GitHub"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-fg-muted hover:bg-surface-2 hover:text-fg"
+        >
+          <Github className="h-4 w-4" />
+        </a>
         <ThemeToggle />
       </div>
     </header>
