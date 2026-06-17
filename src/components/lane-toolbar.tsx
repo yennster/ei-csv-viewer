@@ -101,13 +101,16 @@ export function LaneToolbar(props: LaneToolbarProps) {
       role="toolbar"
       aria-label="Lane layout"
     >
-      {/* segmented preset control */}
+      {/* segmented preset control. Auto group is temporarily HIDDEN — the
+          magnitude grouping needs more work and can disrupt the other views.
+          The action stays wired (PRESETS + onApplyAutoGroup), so re-enabling it
+          later is just dropping this filter. */}
       <div
         className="inline-flex overflow-hidden rounded-md border border-border"
         role="group"
         aria-label="Lane presets"
       >
-        {PRESETS.map((p, i) => {
+        {PRESETS.filter((p) => p.key !== "auto").map((p, i) => {
           const active = preset === p.key;
           return (
             <button

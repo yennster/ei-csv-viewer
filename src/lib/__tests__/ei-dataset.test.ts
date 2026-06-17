@@ -15,7 +15,7 @@ function sampleMeta(over: Partial<EISampleMeta> = {}): EISampleMeta {
 }
 
 describe("datasetFromSample (critical: must NOT pre-collapse to one lane)", () => {
-  it("returns an EMPTY lanes array so the store auto-groups by magnitude", () => {
+  it("returns an EMPTY lanes array so the store lays out the channels itself", () => {
     const payload: EISamplePayload = {
       sensors: [
         { name: "big", units: "x" },
@@ -40,7 +40,7 @@ describe("datasetFromSample (critical: must NOT pre-collapse to one lane)", () =
   });
 });
 
-describe("store.loadDataset auto-groups an EI sample", () => {
+describe("store.loadDataset lays out an EI sample into lanes", () => {
   beforeEach(() => {
     useEditorStore.getState().resetDataset();
   });

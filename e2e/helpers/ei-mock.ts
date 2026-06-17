@@ -53,8 +53,8 @@ export function payloadFor(sampleId: number) {
   const rows: number[][] = [];
   for (let r = 0; r < 64; r++) {
     const row = sensors.map((_, axis) => {
-      // Axis 0 small (~±1), axis 1 mid (~±50), axis 2 large (~±1000) so the
-      // magnitude-ratio auto-grouping yields multiple lanes.
+      // Axis 0 small (~±1), axis 1 mid (~±50), axis 2 large (~±1000): distinct
+      // ranges so per-lane auto-scaling is visible across the lanes.
       const scale = axis === 0 ? 1 : axis === 1 ? 50 : 1000;
       return scale * Math.sin((r / 64) * Math.PI * 2 + axis);
     });

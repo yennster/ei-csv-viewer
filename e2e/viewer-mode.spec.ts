@@ -52,7 +52,7 @@ test.describe("viewer mode", () => {
     await openViewer(page);
     // The lane toolbar segmented control stays in viewer mode.
     await expect(
-      page.getByRole("button", { name: /Auto group/ }),
+      page.getByRole("button", { name: /One per lane/ }),
     ).toBeVisible();
   });
 

@@ -278,7 +278,9 @@ const initialUi: UiState = {
   theme: "light",
   embed: false,
   mode: "editor",
-  preset: "auto",
+  // One-per-lane is the default. (Auto group is temporarily hidden in the UI;
+  // when it returns this can go back to "auto".)
+  preset: "one",
   xWindow: null,
   cursorIdx: null,
   cropSel: null,
@@ -400,12 +402,11 @@ export const useEditorStore = create<EditorState>((set, get) => {
         // layout can't be reproduced on a different channel set, so it falls
         // back to auto-group. A dataset that ships its own lanes keeps them.
         const persisted = s.ui.preset;
+        // Default to one-per-lane. Auto group is temporarily hidden from the
+        // UI, so it is no longer the fallback for a new dataset (only an
+        // explicit "all" / "one" choice is honoured; anything else -> one).
         const presetForLoad: LanePreset =
-          persisted === "one"
-            ? "one-per-channel"
-            : persisted === "all"
-              ? "all-in-one"
-              : "auto-group";
+          persisted === "all" ? "all-in-one" : "one-per-channel";
         const explicit = dataset.lanes.length > 0;
         const lanes = explicit
           ? dataset.lanes

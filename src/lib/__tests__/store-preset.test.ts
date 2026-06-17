@@ -23,16 +23,16 @@ describe("store — lane preset persistence across sample loads", () => {
     // Clean start: no dataset, default (auto) preset.
     useEditorStore.setState((s) => ({
       dataset: null,
-      ui: { ...s.ui, preset: "auto" },
+      ui: { ...s.ui, preset: "one" },
     }));
   });
 
-  it("defaults to auto-group on first load", () => {
+  it("defaults to one-per-lane on first load", () => {
     useEditorStore.getState().loadDataset(makeDataset("first"));
     const s = useEditorStore.getState();
-    expect(s.ui.preset).toBe("auto");
-    // similar-magnitude channels auto-group into ONE lane
-    expect(s.dataset?.lanes.length).toBe(1);
+    expect(s.ui.preset).toBe("one");
+    // one lane per channel by default (auto group is hidden for now)
+    expect(s.dataset?.lanes.length).toBe(3);
   });
 
   it("re-applies the chosen preset when a new sample loads", () => {
