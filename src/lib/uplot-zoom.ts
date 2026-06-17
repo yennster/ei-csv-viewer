@@ -195,17 +195,12 @@ export function attachZoomController(
     const targets = getSyncTargets();
     for (const t of targets) {
       try {
-        // Commit x with a BARE setScale. Pre-setting t.scales.x.min/max first and
-        // then calling setScale with those SAME values makes uPlot's change
-        // detection see "no change" and SKIP committing the internal _min/_max —
-        // the series then can't be positioned and the lane goes blank. The x
-        // range fn reads the live window we published above, so setScale commits
-        // it. (uPlot commits synchronously outside a batch.)
-        t.setScale("x", { min: win.min, max: win.max });
-        // Re-fit each y to the new window: uPlot does NOT re-run a y `range` fn
-        // on a bare setScale('x') under auto:false, so without this y keeps the
-        // full-data range and the lines flatten on zoom. setScale committed x, so
-        // each y range fn (which reads t.scales.x) now sees the new window.
+        // Point x at the target window so the y range fns (which read
+        // t.scales.x) re-fit to it. uPlot DEFERS the setScale('x') commit, so
+        // reading t.scales.x AFTER setScale would return the stale window.
+        t.scales.x.min = win.min;
+        t.scales.x.max = win.max;
+        const yfit: Array<[string, number, number]> = [];
         for (const sk of yScaleKeys(t)) {
           const sc = t.scales[sk];
           const rangeFn = sc.range;
@@ -219,9 +214,18 @@ export function attachZoomController(
               Number.isFinite(lo) &&
               Number.isFinite(hi)
             ) {
-              t.setScale(sk, { min: lo, max: hi });
+              yfit.push([sk, lo, hi]);
             }
           }
+        }
+        // Commit x. uPlot SKIPS committing a scale's internal _min/_max when the
+        // requested range equals the current scale.min/max — and we just set them
+        // to the target — so nudge min off-target first to FORCE the commit,
+        // otherwise the series can't be positioned and the lane blanks.
+        t.scales.x.min = win.min - (Math.abs(win.max - win.min) || 1);
+        t.setScale("x", { min: win.min, max: win.max });
+        for (const [sk, lo, hi] of yfit) {
+          t.setScale(sk, { min: lo, max: hi });
         }
       } catch {
         /* a sibling may be mid-teardown; skip it */

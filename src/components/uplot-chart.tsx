@@ -528,19 +528,22 @@ export function UplotChart({
     const max = xWindow ? xWindow.max : (arr[arr.length - 1] ?? 1);
     programmaticRef.current = true;
     try {
-      // Commit the x-window with a BARE setScale. Pre-setting u.scales.x.min/max
-      // FIRST and then calling setScale with those SAME values makes uPlot's
-      // change detection see "no change" and SKIP committing the internal
-      // _min/_max that position the series — which leaves a blank lane with a
-      // correct-looking axis (the series can't be placed without _min/_max). The
-      // AxisFooter renders correctly precisely because it does a bare setScale.
-      u.setScale("x", { min, max });
-      // uPlot does NOT re-run a lane's y `range` fn on a bare setScale('x') under
-      // auto:false, so re-fit y explicitly. setScale commits x synchronously
-      // (outside a batch), so yRange — which reads self.scales.x — now sees the
-      // new window. (Wheel/drag gestures are re-fit by the zoom controller; this
-      // covers the committed window, +/- buttons, reset.)
+      // Re-fit y to the TARGET window. The y range fn reads self.scales.x, and
+      // uPlot DEFERS the setScale('x') commit — so reading self.scales.x right
+      // after setScale('x') returns the STALE window (e.g. the previous zoomed
+      // range, which then clips the data on zoom-out). Point scales.x at the
+      // target FIRST so yRange computes over the correct window.
+      u.scales.x.min = min;
+      u.scales.x.max = max;
       const [lo, hi] = yRangeRef.current(u, 0, 0);
+      // Commit x. uPlot SKIPS committing a scale's internal _min/_max (which
+      // position the series) when the requested range equals the current
+      // scale.min/max — and we just set them to the target — so nudge min
+      // off-target first to FORCE the commit. Without this the series can't be
+      // placed and the lane goes blank (the AxisFooter works because it never
+      // pre-sets and so always trips the change detection).
+      u.scales.x.min = min - (Math.abs(max - min) || 1);
+      u.setScale("x", { min, max });
       if (Number.isFinite(lo) && Number.isFinite(hi)) {
         u.setScale("y", { min: lo, max: hi });
       }
