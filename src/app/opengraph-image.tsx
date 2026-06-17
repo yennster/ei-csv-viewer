@@ -2,7 +2,8 @@ import { ImageResponse } from "next/og";
 
 // Open Graph / social share image for the Edge Impulse CSV Editor.
 export const runtime = "edge";
-export const alt = "Edge Impulse CSV Editor — every channel on its own scale";
+export const alt =
+  "Edge Impulse CSV Editor: auto-scaled lanes for time-series data";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -66,7 +67,7 @@ export default function OpengraphImage() {
               lineHeight: 1.05,
             }}
           >
-            Every channel on its own scale
+            Auto-scaled lanes for time-series data
           </div>
           <div style={{ marginTop: 22, fontSize: 30, color: "#64748b", maxWidth: 900 }}>
             Per-lane auto-scaled time-series on a shared timeline, with a
