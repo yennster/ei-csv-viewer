@@ -195,18 +195,17 @@ export function attachZoomController(
     const targets = getSyncTargets();
     for (const t of targets) {
       try {
-        // Re-fit each y to the new window. Two uPlot 1.6 facts (verified live)
-        // make an explicit recompute necessary:
-        //  1. setScale('y', {min:null,max:null}) does NOT re-invoke a y `range`
-        //     fn under auto:false — y keeps the full-data range and lines flatten.
-        //  2. setScale is DEFERRED, so self.scales.x is stale right after
-        //     setScale('x') — the y range fn (which reads self.scales.x) would
-        //     compute over the OLD window.
-        // So point each x scale at the window SYNCHRONOUSLY, compute the windowed
-        // y from its range fn, then commit x + the recomputed y. (rAF-coalesced.)
-        t.scales.x.min = win.min;
-        t.scales.x.max = win.max;
-        const yfit: Array<[string, number, number]> = [];
+        // Commit x with a BARE setScale. Pre-setting t.scales.x.min/max first and
+        // then calling setScale with those SAME values makes uPlot's change
+        // detection see "no change" and SKIP committing the internal _min/_max —
+        // the series then can't be positioned and the lane goes blank. The x
+        // range fn reads the live window we published above, so setScale commits
+        // it. (uPlot commits synchronously outside a batch.)
+        t.setScale("x", { min: win.min, max: win.max });
+        // Re-fit each y to the new window: uPlot does NOT re-run a y `range` fn
+        // on a bare setScale('x') under auto:false, so without this y keeps the
+        // full-data range and the lines flatten on zoom. setScale committed x, so
+        // each y range fn (which reads t.scales.x) now sees the new window.
         for (const sk of yScaleKeys(t)) {
           const sc = t.scales[sk];
           const rangeFn = sc.range;
@@ -220,13 +219,9 @@ export function attachZoomController(
               Number.isFinite(lo) &&
               Number.isFinite(hi)
             ) {
-              yfit.push([sk, lo, hi]);
+              t.setScale(sk, { min: lo, max: hi });
             }
           }
-        }
-        t.setScale("x", { min: win.min, max: win.max });
-        for (const [sk, lo, hi] of yfit) {
-          t.setScale(sk, { min: lo, max: hi });
         }
       } catch {
         /* a sibling may be mid-teardown; skip it */
