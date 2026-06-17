@@ -325,6 +325,10 @@ export function UplotChart({
       padding: [8, 12, 8, 0],
       legend: { show: false },
       cursor: {
+        // Draw ONLY the vertical (time) crosshair; no per-lane horizontal y
+        // crosshair line (it lingered after interactions and read as noise).
+        x: true,
+        y: false,
         // x ONLY in the sync scales — never y, or lane y-axes would couple
         // and the per-lane independent scaling (the whole point) breaks.
         sync: { key: syncKey, setSeries: false, scales: ["x", null] },

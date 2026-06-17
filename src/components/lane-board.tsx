@@ -102,6 +102,10 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
 
   // ---- derived ----
   const lanes = dataset?.lanes ?? EMPTY_LANES;
+  // Signature of the lane LAYOUT (which lanes exist). Changes on a preset switch
+  // or add/remove lane, but NOT on a drag (which only moves channels between
+  // existing lanes), so the chart area remounts only on structural changes.
+  const layoutKey = lanes.map((l) => l.id).join("|") || "empty";
   // Derive the id->channel map from a stable subscription to dataset.channels.
   // Using selectChannelsById as a raw zustand selector would build a NEW object
   // every call, so Object.is snapshot caching never matches and the whole board
@@ -322,70 +326,78 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
           },
         }}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {lanes.map((lane: LaneModel) => (
-            <Lane
-              key={lane.id}
-              lane={lane}
-              channels={lane.channelIds
-                .map((id) => channelsById[id])
-                .filter((c): c is Channel => !!c)}
-              xs={xs}
-              xWindow={xWindow}
+        {/* Remount the whole chart area when the lane LAYOUT changes (preset
+            switch, add/remove lane) so the uPlot charts re-create in one clean
+            unmount-then-mount pass with a fresh cursor-sync group — like a fresh
+            load. Switching presets otherwise re-inits charts mid-churn and the
+            non-first lanes can end up blank. A drag keeps the same lane ids, so
+            it does NOT remount and stays smooth. */}
+        <React.Fragment key={layoutKey}>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {lanes.map((lane: LaneModel) => (
+              <Lane
+                key={lane.id}
+                lane={lane}
+                channels={lane.channelIds
+                  .map((id) => channelsById[id])
+                  .filter((c): c is Channel => !!c)}
+                xs={xs}
+                xWindow={xWindow}
+                cursorIdx={cursorIdx}
+                syncKey={SYNC_KEY}
+                cropMode={effectiveCrop}
+                cropSel={cropSel}
+                filterMask={filterMask}
+                moveTargets={moveTargets}
+                isOver={overId === `lane:${lane.id}`}
+                onRenameLane={renameLane}
+                onRemoveLane={removeLane}
+                onSetYScale={setLaneYScale}
+                onRenameChannel={renameChannel}
+                onToggleVisible={toggleChannelVisibility}
+                onMoveChannel={handleMove}
+                onReady={registerChart}
+                onDestroyChart={unregisterChart}
+                onZoom={onZoom}
+                onCursor={onCursor}
+                onCrop={onCrop}
+              />
+            ))}
+
+            {/* reserved Unassigned tray (parked channels; NOT charted) */}
+            <UnassignedTray
+              channels={unassignedChannels}
               cursorIdx={cursorIdx}
-              syncKey={SYNC_KEY}
-              cropMode={effectiveCrop}
-              cropSel={cropSel}
-              filterMask={filterMask}
               moveTargets={moveTargets}
-              isOver={overId === `lane:${lane.id}`}
-              onRenameLane={renameLane}
-              onRemoveLane={removeLane}
-              onSetYScale={setLaneYScale}
+              isOver={overId === `lane:${UNASSIGNED_ID}`}
               onRenameChannel={renameChannel}
               onToggleVisible={toggleChannelVisibility}
               onMoveChannel={handleMove}
-              onReady={registerChart}
-              onDestroyChart={unregisterChart}
-              onZoom={onZoom}
-              onCursor={onCursor}
-              onCrop={onCrop}
             />
-          ))}
 
-          {/* reserved Unassigned tray (parked channels; NOT charted) */}
-          <UnassignedTray
-            channels={unassignedChannels}
-            cursorIdx={cursorIdx}
-            moveTargets={moveTargets}
-            isOver={overId === `lane:${UNASSIGNED_ID}`}
-            onRenameChannel={renameChannel}
-            onToggleVisible={toggleChannelVisibility}
-            onMoveChannel={handleMove}
+            {/* persistent "+ new lane" drop target */}
+            <NewLaneDropZone
+              active={!!activeChannelId}
+              isOver={overId === "new-lane"}
+            />
+          </div>
+
+          {/* sticky shared x-axis ruler — every lane hides its own x-axis, so
+              this is the only place the time / sample-index scale is drawn */}
+          <AxisFooter
+            xs={xs}
+            xWindow={xWindow}
+            syncKey={SYNC_KEY}
+            gutterPx={56}
+            hasTime={hasTime}
+            onReady={registerFooter}
+            onDestroy={unregisterFooter}
+            onResetWindow={resetXWindow}
           />
 
-          {/* persistent "+ new lane" drop target */}
-          <NewLaneDropZone
-            active={!!activeChannelId}
-            isOver={overId === "new-lane"}
-          />
-        </div>
-
-        {/* sticky shared x-axis ruler — every lane hides its own x-axis, so this
-            is the only place the time / sample-index scale is drawn */}
-        <AxisFooter
-          xs={xs}
-          xWindow={xWindow}
-          syncKey={SYNC_KEY}
-          gutterPx={56}
-          hasTime={hasTime}
-          onReady={registerFooter}
-          onDestroy={unregisterFooter}
-          onResetWindow={resetXWindow}
-        />
-
-        {/* crop apply/reset surface, only while crop mode is active (editor) */}
-        {effectiveCrop ? <CropControls /> : null}
+          {/* crop apply/reset surface, only while crop mode is active (editor) */}
+          {effectiveCrop ? <CropControls /> : null}
+        </React.Fragment>
 
         {/* portaled overlay so the dragged chip escapes canvas/overflow clip */}
         <DragOverlay modifiers={[restrictToWindowEdges]} dropAnimation={null}>

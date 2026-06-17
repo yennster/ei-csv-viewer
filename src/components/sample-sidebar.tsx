@@ -67,6 +67,14 @@ export function SampleSidebar({
   const [openingId, setOpeningId] = React.useState<number | null>(null);
 
   const pageOffset = offset + page * limit;
+  // Pager display: a human-readable 1-based range of the visible page, plus
+  // whether paging is even possible. A full page (length >= limit) hints there
+  // may be a next page; anything short means we are on the last one.
+  const firstShown = samples.length ? pageOffset + 1 : 0;
+  const lastShown = pageOffset + samples.length;
+  const hasPrev = page > 0;
+  const hasNext = samples.length >= limit;
+  const showPager = hasPrev || hasNext;
 
   const refresh = React.useCallback(() => {
     const labelList = labels
@@ -190,29 +198,35 @@ export function SampleSidebar({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-1 border-t border-border px-2 py-1.5">
-        <span className="text-[11px] text-fg-muted">offset {pageOffset}</span>
-        <div className="flex items-center gap-1">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={page === 0 || loading}
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={samples.length < limit || loading}
-            aria-label="Next page"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+      {showPager ? (
+        <div className="flex items-center justify-between gap-1 border-t border-border px-2 py-1.5">
+          <span className="text-[11px] tabular-nums text-fg-muted">
+            Showing {firstShown}&ndash;{lastShown}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={!hasPrev || loading}
+              aria-label="Previous page"
+              title="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasNext || loading}
+              aria-label="Next page"
+              title="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {onResize ? <ResizeHandle width={width} onResize={onResize} /> : null}
     </aside>
