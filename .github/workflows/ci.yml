@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: typecheck · build · unit · e2e · brand
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      CI: "true"
+      # Keep Next telemetry off in CI.
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests (vitest)
+        run: pnpm test
+
+      # Cache the Playwright browser binaries keyed on the installed version, so
+      # the (slow) chromium download only happens when the version changes.
+      - name: Resolve Playwright version
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install Playwright chromium (+ OS deps)
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Even on a browser cache hit, ensure the host OS libraries are present.
+      - name: Install Playwright OS deps (cache hit path)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: E2E tests (Playwright)
+        # Reuse the .next produced by the dedicated Build step instead of running
+        # a SECOND `next build` inside Playwright's webServer. This halves CI build
+        # time and avoids rebuilding over a pre-existing .next (the scenario that
+        # reproduced a PageNotFoundError on a dirty tree). The webServer then only
+        # runs `next start`, so a build failure is attributed to the Build step
+        # rather than masquerading as an opaque "webServer could not start" error.
+        env:
+          E2E_SKIP_BUILD: "1"
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Upload failure traces (written to e2e/.output by trace: on-first-retry) so
+      # a flaky/failed e2e test in CI can actually be inspected with the Playwright
+      # trace viewer. Without this the retries produce traces that are discarded.
+      - name: Upload Playwright traces
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: e2e/.output/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Fail the build if the inspired-by third-party tool's name appears
+      # anywhere in source/tests/docs/CI. The forbidden tokens are assembled from
+      # split string parts at RUNTIME so this very file never contains them
+      # literally (which would otherwise self-trip the check).
+      - name: Forbidden brand check
+        run: |
+          PATTERN="flow[ _-]?csv|wave""works"
+          MATCHES=$(grep -rinE "$PATTERN" . \
+            --include='*.ts' --include='*.tsx' --include='*.js' \
+            --include='*.mjs' --include='*.cjs' --include='*.json' \
+            --include='*.md' --include='*.css' --include='*.yml' \
+            --include='*.yaml' \
+            | grep -vE 'node_modules|\.next/' || true)
+          if [ -n "$MATCHES" ]; then
+            echo "Forbidden brand term(s) found:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "Brand check clean: no forbidden terms found."

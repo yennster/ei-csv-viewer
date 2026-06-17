@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/*
+ * Theme tokens. Light is the default; the `.dark` class on <html> flips them.
+ * Chart axis/grid/series colors are exposed as CSS variables so uPlot can read
+ * them and both themes (plus embedded mode) look correct.
+ */
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+}
+
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --danger: #dc2626;
+
+  /* chart theming */
+  --chart-grid: #e2e8f0;
+  --chart-axis: #94a3b8;
+  --chart-cursor: #64748b;
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0b1120;
+  --surface: #111827;
+  --surface-2: #1e293b;
+  --border: #1f2a3c;
+  --fg: #e2e8f0;
+  --fg-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-fg: #ffffff;
+  --danger: #f87171;
+
+  --chart-grid: #1f2a3c;
+  --chart-axis: #475569;
+  --chart-cursor: #94a3b8;
+
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+}
+
+/*
+ * uPlot theme overrides. The base stylesheet (imported in layout.tsx) hard-codes
+ * a #607D8B crosshair and an rgba(0,0,0,.07) selection band that look wrong in
+ * dark mode. Bind them to our chart CSS variables so the synchronized crosshair
+ * and the drag/crop band are themed in both light and dark.
+ */
+.uplot {
+  width: 100%;
+  font-family: inherit;
+}
+
+.u-hz .u-cursor-x,
+.u-vt .u-cursor-y {
+  border-right-color: var(--chart-cursor);
+}
+
+.u-hz .u-cursor-y,
+.u-vt .u-cursor-x {
+  border-bottom-color: var(--chart-cursor);
+}
+
+.u-select {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+body {
+  margin: 0;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
