@@ -25,7 +25,6 @@ precedence over inherited ones.
 | Parameter | Aliases | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `apiKey` | — | string `ei_…` | — | Edge Impulse API key. Validated, moved into the httpOnly `ei_session` cookie, then **stripped from the URL**. Only accepted when it starts with `ei_`. See the security note below. |
-| `project` | `eiProject` | integer ≥ 1 | — | Edge Impulse project id to connect to. If omitted, the first project accessible with the API key is used. |
 | `category` | — | enum | — | Which dataset bucket to list / load from: `training`, `testing`, or `anomaly`. Case-insensitive. |
 | `labels` | — | comma list | — | Filter the sample list to these labels, e.g. `labels=idle,walk,run`. Whitespace is trimmed and empty entries are dropped. |
 | `sample` | `sampleId` | integer ≥ 1 | — | Id of the sample to auto-open in the editor on load. |
@@ -48,38 +47,38 @@ precedence over inherited ones.
 Open a specific training sample in a project:
 
 ```
-https://your-app.example.com/?project=12345&category=training&sample=98765
+https://your-app.example.com/?category=training&sample=98765
 ```
 
 Connect with an API key (the key is moved into the session cookie and removed
 from the address bar after load):
 
 ```
-https://your-app.example.com/?apiKey=ei_xxxxxxxxxxxxxxxxxxxx&project=12345&sample=98765
+https://your-app.example.com/?apiKey=ei_xxxxxxxxxxxxxxxxxxxx&sample=98765
 ```
 
 List only specific labels, with a larger page size:
 
 ```
-https://your-app.example.com/?project=12345&category=testing&labels=idle,walk,run&limit=500
+https://your-app.example.com/?category=testing&labels=idle,walk,run&limit=500
 ```
 
 Embed in an iframe with chrome stripped and a forced dark theme:
 
 ```
-https://your-app.example.com/?project=12345&sample=98765&embed=1&theme=dark
+https://your-app.example.com/?sample=98765&embed=1&theme=dark
 ```
 
 Open a sample **read-only** for analysis (no crop / rename / upload), embedded:
 
 ```
-https://your-app.example.com/?project=12345&sample=98765&mode=viewer&embed=1
+https://your-app.example.com/?sample=98765&mode=viewer&embed=1
 ```
 
 Point at a self-hosted / enterprise Edge Impulse instance:
 
 ```
-https://your-app.example.com/?project=12345&studioHost=https://studio.acme-ei.com/v1/api&ingestionHost=https://ingestion.acme-ei.com/api
+https://your-app.example.com/?studioHost=https://studio.acme-ei.com/v1/api&ingestionHost=https://ingestion.acme-ei.com/api
 ```
 
 ---

@@ -84,10 +84,6 @@ export function parseParams(
   const apiKey = pick(params, "apiKey");
   if (apiKey && /^ei_/.test(apiKey)) out.apiKey = apiKey;
 
-  // project (alias eiProject), int >= 1
-  const project = parseIntStrict(pick(params, "project", "eiProject"));
-  if (project != null && project >= 1) out.project = project;
-
   // category
   const category = parseEnum<EICategory>(pick(params, "category"), CATEGORIES);
   if (category) out.category = category;

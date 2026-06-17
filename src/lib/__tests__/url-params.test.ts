@@ -70,11 +70,6 @@ describe("parseParams", () => {
     expect(bad.apiKey).toBeUndefined();
   });
 
-  it("reads project via alias and validates >= 1", () => {
-    expect(parseParams("eiProject=7").project).toBe(7);
-    expect(parseParams("project=0").project).toBeUndefined();
-  });
-
   it("reads sample via alias", () => {
     expect(parseParams("sampleId=12").sample).toBe(12);
     expect(parseParams("sample=3").sample).toBe(3);
@@ -115,19 +110,19 @@ describe("getIframeQueryParams (secret-param isolation)", () => {
   }
 
   it("does NOT inherit apiKey from a parent frame, but inherits other params", () => {
-    setParent("?apiKey=ei_secretkey&project=99&category=testing");
+    setParent("?apiKey=ei_secretkey&sample=99&category=testing");
     window.history.replaceState(null, "", "/?embed=1");
     const merged = getIframeQueryParams();
     // apiKey from the parent is dropped...
     expect(merged.get("apiKey")).toBeNull();
     // ...but non-secret params are inherited, and own-window params win.
-    expect(merged.get("project")).toBe("99");
+    expect(merged.get("sample")).toBe("99");
     expect(merged.get("category")).toBe("testing");
     expect(merged.get("embed")).toBe("1");
   });
 
   it("still accepts apiKey supplied to the app's OWN url", () => {
-    setParent("?project=7");
+    setParent("?sample=7");
     window.history.replaceState(null, "", "/?apiKey=ei_ownkey");
     const merged = getIframeQueryParams();
     expect(merged.get("apiKey")).toBe("ei_ownkey");

@@ -142,7 +142,6 @@ export interface EIIngestionBody {
 
 export interface AppParams {
   apiKey?: string; // matches /^ei_/, moved to cookie then stripped from URL
-  project?: number; // alias eiProject, int >= 1
   category?: EICategory;
   labels?: string[]; // comma list
   sample?: number; // alias sampleId, int >= 1 — auto-open in editor

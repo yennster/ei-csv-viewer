@@ -4,11 +4,11 @@
 //
 // Two ways in:
 //   (a) Connect to Edge Impulse: API key (+ optional host overrides) -> POST
-//       /api/ei/session via the store -> pick a sample. The project id is taken
-//       from the URL `project` param or auto-detected from the API key.
+//       /api/ei/session via the store -> pick a sample. The project is
+//       auto-detected from the (project-scoped) API key.
 //   (b) Import a local CSV file straight into the editor.
 //
-// URL params (apiKey / project / category / sample) pre-fill the form and can
+// URL params (apiKey / category / sample) pre-fill the form and can
 // auto-run: when an `apiKey` is present in the URL we connect immediately and
 // then STRIP the key from the address bar with history.replaceState so it never
 // lingers in the visible URL, history, or referrer.
@@ -61,16 +61,14 @@ export function ConnectPanel({ params }: { params: AppParams }) {
     async (key: string) => {
       const ok = await connect({
         apiKey: key.trim(),
-        // Project id is no longer entered manually; it comes from the URL
-        // `project` param when deep-linked, otherwise the server auto-detects
-        // it from the (project-scoped) API key.
-        projectId: params.project,
+        // A project API key is scoped to one project, so the server resolves
+        // the project from the key. No project id is sent from the client.
         studioHost: studioHost.trim() || undefined,
         ingestionHost: ingestionHost.trim() || undefined,
       });
       return ok;
     },
-    [connect, params.project, studioHost, ingestionHost],
+    [connect, studioHost, ingestionHost],
   );
 
   // Auto-connect once if the URL carried a valid apiKey, then strip it.

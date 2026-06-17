@@ -24,13 +24,6 @@ const PARAMS: Param[] = [
     desc: "Edge Impulse API key. Validated, moved into the httpOnly ei_session cookie, then stripped from the URL. Only accepted when it starts with ei_.",
   },
   {
-    name: "project",
-    alias: "eiProject",
-    type: "integer ≥ 1",
-    def: "—",
-    desc: "Project id to connect to. If omitted, the first project the key can access is used.",
-  },
-  {
     name: "category",
     type: "enum",
     def: "—",
@@ -96,23 +89,23 @@ const PARAMS: Param[] = [
 const EXAMPLES: { label: string; url: string }[] = [
   {
     label: "Open a specific training sample",
-    url: "/?project=12345&category=training&sample=98765",
+    url: "/?category=training&sample=98765",
   },
   {
     label: "Connect with an API key (stripped from the URL after load)",
-    url: "/?apiKey=ei_xxxxxxxxxxxx&project=12345&sample=98765",
+    url: "/?apiKey=ei_xxxxxxxxxxxx&sample=98765",
   },
   {
     label: "Filter by label, with a larger page size",
-    url: "/?project=12345&category=testing&labels=idle,walk,run&limit=500",
+    url: "/?category=testing&labels=idle,walk,run&limit=500",
   },
   {
     label: "Embedded, read-only viewer",
-    url: "/?project=12345&sample=98765&mode=viewer&embed=1",
+    url: "/?sample=98765&mode=viewer&embed=1",
   },
   {
     label: "Self-hosted Edge Impulse instance",
-    url: "/?project=12345&studioHost=https://studio.acme.com/v1/api",
+    url: "/?studioHost=https://studio.acme.com/v1/api",
   },
 ];
 

@@ -63,12 +63,8 @@ export function AppRoot({ embed }: { embed: boolean }) {
                 <div className="flex flex-col items-center text-center">
                   <LanesPreview />
                   <h2 className="mt-6 text-2xl font-semibold tracking-tight text-fg">
-                    Every channel on its own scale
+                    Auto-scaled lanes for sensor time-series
                   </h2>
-                  <p className="mt-2.5 max-w-md text-sm leading-relaxed text-fg-muted">
-                    Each channel gets its own auto-scaled lane on a shared
-                    timeline with a synchronized cursor.
-                  </p>
                   <ul className="mt-5 flex flex-wrap items-center justify-center gap-2">
                     {[
                       "Drag to regroup",
