@@ -176,7 +176,7 @@ export const Lane = React.memo(function Lane({
     <div
       ref={droppable.setNodeRef}
       className={cn(
-        "grid grid-cols-1 gap-0 border-b border-border md:grid-cols-[var(--rail-w,240px)_1fr]",
+        "grid min-w-0 grid-cols-1 gap-0 border-b border-border md:grid-cols-[var(--rail-w,240px)_1fr]",
         "transition-colors",
         isOver && "bg-accent/5 ring-2 ring-inset ring-accent",
       )}

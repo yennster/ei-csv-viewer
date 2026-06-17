@@ -257,7 +257,13 @@ export function UplotChart({
     const el = containerRef.current;
     if (!el) return;
 
-    const width = el.clientWidth || 600;
+    // Measure the laid-out width. getBoundingClientRect reads the current layout,
+    // so it is robust to a just-committed subtree; fall back to 600 only when the
+    // element is genuinely unsized (then corrected post-layout by the rAF and the
+    // ResizeObserver below).
+    const measureWidth = () =>
+      Math.round(el.getBoundingClientRect().width) || el.clientWidth || 0;
+    const width = measureWidth() || 600;
     const gridColor = cssVar("--chart-grid", "#e2e8f0");
     const axisColor = cssVar("--chart-axis", "#94a3b8");
     const labelColor = cssVar("--fg-muted", "#64748b");
@@ -436,6 +442,24 @@ export function UplotChart({
     uplotRef.current = u;
     onReady?.(u);
 
+    // A freshly-mounted chart (a NEW lane created via derive/drag remounts the
+    // chart area) can read a 0/stale container width above — before the browser
+    // lays out the remounted subtree — so uPlot builds a ~0-width plot rect and
+    // the SERIES PATH has no room to draw even though the fixed-gutter y-axis
+    // still renders its (correct) scale. That is the "blank lane with a correct
+    // axis" bug. Re-measure on the next frame and resize if the real width now
+    // differs, so the line always paints. (The ResizeObserver's w!==u.width gate
+    // can otherwise miss this when the stale width never subsequently changes.)
+    let sizeRaf =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame(() => {
+            sizeRaf = 0;
+            if (uplotRef.current !== u) return;
+            const w = measureWidth();
+            if (w > 0 && w !== u.width) u.setSize({ width: w, height });
+          })
+        : 0;
+
     // double-click resets the shared x-window to full extent
     const onDblClick = () => onZoomRef.current?.(null);
     u.over.addEventListener("dblclick", onDblClick);
@@ -473,6 +497,8 @@ export function UplotChart({
     }
 
     return () => {
+      if (sizeRaf && typeof cancelAnimationFrame === "function")
+        cancelAnimationFrame(sizeRaf);
       u.over.removeEventListener("dblclick", onDblClick);
       u.over.removeEventListener("mousedown", onMouseDown);
       zoom?.destroy();
@@ -582,6 +608,12 @@ export function UplotChart({
       if (w > 0 && w !== u.width) u.setSize({ width: w, height });
     });
     ro.observe(el);
+    // Self-heal once synchronously on attach: if the instance was created against
+    // a stale width during a remount, correct it now instead of waiting for a
+    // size CHANGE the observer might never see.
+    const u0 = uplotRef.current;
+    const w0 = Math.round(el.getBoundingClientRect().width);
+    if (u0 && w0 > 0 && w0 !== u0.width) u0.setSize({ width: w0, height });
     return () => ro.disconnect();
   }, [height]);
 

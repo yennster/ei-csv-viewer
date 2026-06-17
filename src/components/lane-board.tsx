@@ -333,7 +333,7 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
             non-first lanes can end up blank. A drag keeps the same lane ids, so
             it does NOT remount and stays smooth. */}
         <React.Fragment key={layoutKey}>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
             {lanes.map((lane: LaneModel) => (
               <Lane
                 key={lane.id}

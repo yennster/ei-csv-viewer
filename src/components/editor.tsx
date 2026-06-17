@@ -258,7 +258,7 @@ export function Editor({ params }: { params?: AppParams }) {
   if (!dataset && !connected) return null;
 
   return (
-    <div className="flex h-full min-h-0 flex-1">
+    <div className="flex h-full min-h-0 min-w-0 flex-1">
       {showSidebar &&
         (sidebarOpen ? (
           <SampleSidebar
@@ -283,12 +283,12 @@ export function Editor({ params }: { params?: AppParams }) {
             </Button>
           </div>
         ))}
-      <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         {dataset && <DatasetToolbar embed={embed} />}
         {/* Formula engine: derive + filter are non-destructive analysis, so it
             is available in BOTH editor and viewer mode. */}
         {dataset && <FormulaBar />}
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           {dataset ? <LaneBoard embed={embed} /> : <EmptyState />}
         </div>
       </div>
