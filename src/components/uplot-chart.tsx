@@ -18,6 +18,8 @@
 import * as React from "react";
 import uPlot from "uplot";
 import { downsample } from "@/lib/timeseries";
+import { labelColor } from "@/lib/labels";
+import type { StructuredLabel } from "@/lib/types";
 import { formatTick } from "./lane-format";
 import { useEditorStore } from "@/lib/store";
 import { attachZoomController, type ZoomController } from "@/lib/uplot-zoom";
@@ -67,6 +69,12 @@ export interface UplotChartProps {
    * the data is untouched; this is purely a visual overlay.
    */
   filterMask?: boolean[] | null;
+  /**
+   * Time-series multi-label segments to paint as translucent colored bands
+   * across the full plot height (with the label name at the top). Inclusive
+   * sample-index ranges, mapped through `xs` so they line up across every lane.
+   */
+  labels?: StructuredLabel[] | null;
   /** max points drawn per series (defaults to ~2x typical plot width) */
   maxRenderPoints?: number;
   /** called once the uPlot instance is ready (parent keeps a ref map) */
@@ -168,6 +176,7 @@ export function UplotChart({
   cropMode = false,
   cropSel = null,
   filterMask = null,
+  labels = null,
   maxRenderPoints,
   onReady,
   onDestroy,
@@ -197,6 +206,7 @@ export function UplotChart({
   const cropModeRef = React.useRef(cropMode);
   const cropSelRef = React.useRef(cropSel);
   const filterMaskRef = React.useRef(filterMask);
+  const labelsRef = React.useRef(labels);
   const seriesRef = React.useRef(series);
   const xsRef = React.useRef(xs);
   // Zoom/pan controller plumbing — read fresh through refs so a callback
@@ -229,6 +239,7 @@ export function UplotChart({
   cropModeRef.current = cropMode;
   cropSelRef.current = cropSel;
   filterMaskRef.current = filterMask;
+  labelsRef.current = labels;
   seriesRef.current = series;
   xsRef.current = xs;
   getSyncTargetsRef.current = getSyncTargets;
@@ -390,6 +401,10 @@ export function UplotChart({
         // x scale, so it lines up across every lane.
         draw: [
           (self: uPlot) => {
+            // 0) multi-label segment bands (painted first so the filter dim and
+            // crop band layer on top). Translucent colored fills + a label tag.
+            drawLabelBands(self, labelsRef.current, xsRef.current);
+
             // 1) formula filter highlight: shade the NON-matching ranges so the
             // matching samples stand out. Non-destructive — a pure overlay.
             drawFilterShade(self, filterMaskRef.current, xsRef.current);
@@ -577,6 +592,13 @@ export function UplotChart({
     u.redraw();
   }, [filterMask]);
 
+  // ---- repaint the label bands when the segments change (no re-init) ----
+  React.useEffect(() => {
+    const u = uplotRef.current;
+    if (!u) return;
+    u.redraw();
+  }, [labels]);
+
   // ---- refresh axis/grid/cursor colors on theme change (no re-init) ----
   React.useEffect(() => {
     const u = uplotRef.current;
@@ -751,6 +773,70 @@ function drawFilterShade(
     }
   }
   if (runStart !== -1) paint(runStart, n - 1);
+  ctx.restore();
+}
+
+/**
+ * Paint time-series multi-label segments as translucent colored bands spanning
+ * the full plot height, each tagged with its label name at the top. Inclusive
+ * sample-index ranges map through the shared `xs` so the bands line up across
+ * every lane. Pure visual overlay — the data is untouched.
+ */
+function drawLabelBands(
+  self: uPlot,
+  labels: StructuredLabel[] | null | undefined,
+  xs: number[],
+): void {
+  if (!labels || labels.length === 0 || xs.length === 0) return;
+  const ctx = self.ctx;
+  const top = self.bbox.top;
+  const h = self.bbox.height;
+  const left = self.bbox.left;
+  const width = self.bbox.width;
+  const lastIdx = xs.length - 1;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, width, h);
+  ctx.clip();
+  ctx.font =
+    "600 10px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+  ctx.textBaseline = "top";
+
+  for (const seg of labels) {
+    const lo = Math.max(0, Math.min(seg.startIndex, lastIdx));
+    const hi = Math.max(0, Math.min(seg.endIndex, lastIdx));
+    if (hi < lo) continue;
+    const xLo = self.valToPos(xs[lo], "x", true);
+    const xHi = self.valToPos(xs[hi], "x", true);
+    const a = Math.min(xLo, xHi);
+    const b = Math.max(xLo, xHi);
+    const w = Math.max(1, b - a);
+    const color = labelColor(seg.label);
+    ctx.fillStyle = withAlpha(color, 0.12);
+    ctx.fillRect(a, top, w, h);
+    // left boundary marker
+    ctx.strokeStyle = withAlpha(color, 0.7);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(a) + 0.5, top);
+    ctx.lineTo(Math.round(a) + 0.5, top + h);
+    ctx.stroke();
+    // label tag (only when there's room to read it)
+    if (w > 22) {
+      const text = seg.label;
+      const tw = Math.min(ctx.measureText(text).width + 8, w - 2);
+      ctx.fillStyle = withAlpha(color, 0.85);
+      ctx.fillRect(a + 1, top + 1, tw, 13);
+      ctx.fillStyle = "#ffffff";
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(a + 1, top + 1, tw, 13);
+      ctx.clip();
+      ctx.fillText(text, a + 5, top + 2);
+      ctx.restore();
+    }
+  }
   ctx.restore();
 }
 

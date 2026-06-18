@@ -185,6 +185,69 @@ describe("POST /api/ei/upload — ingestion body", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("routes multi-label uploads to /files as multipart with a structured_labels.labels sidecar", async () => {
+    connect();
+    ingestionOk();
+
+    const res = await POST(
+      uploadRequest({
+        ...VALID_BODY,
+        labels: [
+          { startIndex: 0, endIndex: 1, label: "a" },
+          { startIndex: 2, endIndex: 2, label: "b" },
+        ],
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    // Multi-label posts to the /files endpoint, not /data.
+    expect(url).toBe("https://ingestion.edgeimpulse.com/api/training/files");
+
+    // Body is multipart FormData with TWO "data" parts (the data file + the
+    // structured_labels.labels sidecar). fetch derives the boundary, so no
+    // explicit Content-Type header is set.
+    const body = init.body as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    const headers = new Headers(init.headers);
+    expect(headers.get("content-type")).toBeNull();
+    expect(headers.get("x-api-key")).toBe("ei_upkey");
+
+    const parts = body.getAll("data");
+    expect(parts).toHaveLength(2);
+    const names = parts.map((p) => (p as File).name);
+    expect(names).toContain("structured_labels.labels");
+
+    const sidecar = parts.find(
+      (p) => (p as File).name === "structured_labels.labels",
+    ) as File;
+    const sidecarJson = JSON.parse(await sidecar.text());
+    expect(sidecarJson.type).toBe("structured-labels");
+    expect(sidecarJson.version).toBe(1);
+    // The labels are keyed by the data file name.
+    const dataName = names.find((n) => n !== "structured_labels.labels")!;
+    expect(sidecarJson.structuredLabels[dataName]).toEqual([
+      { startIndex: 0, endIndex: 1, label: "a" },
+      { startIndex: 2, endIndex: 2, label: "b" },
+    ]);
+
+    const json = (await res.json()) as { labelCount: number };
+    expect(json.labelCount).toBe(2);
+  });
+
+  it("rejects multi-label uploads whose segments are not continuous over the full length (400)", async () => {
+    connect();
+    // Gap at index 1 (length 3): not a full continuous cover -> rejected.
+    const res = await POST(
+      uploadRequest({
+        ...VALID_BODY,
+        labels: [{ startIndex: 0, endIndex: 0, label: "a" }],
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("surfaces a logical success:false from a 200 ingestion response as an error", async () => {
     connect();
     fetchMock.mockResolvedValueOnce(

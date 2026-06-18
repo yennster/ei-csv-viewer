@@ -57,9 +57,15 @@ Additional editor operations:
   lanes.
 - **Crop** a time range with a brush selection (trims the full-resolution data
   for CSV, or calls the Edge Impulse crop endpoint for an Edge Impulse sample).
+- **Multi-label** a time series — split a sample into contiguous, non-overlapping
+  labeled segments (Edge Impulse's structured-labels format), drawn as colored
+  bands across every lane. Add / rename / delete segments, fill gaps, validate
+  the continuous + non-overlapping contract, and export the
+  `structured_labels.labels` sidecar. See [`docs/multi-label.md`](./docs/multi-label.md).
 - **Export** the edited dataset back to CSV.
 - **Upload** the edited dataset back to Edge Impulse as a new sample via the
-  ingestion proxy.
+  ingestion proxy. Multi-label samples upload through the multipart `/files`
+  endpoint with a generated `structured_labels.labels` sidecar.
 
 Very large series are **downsampled only for rendering** (extremes preserved);
 the full-resolution data is always kept for crop, export, and upload.
@@ -186,6 +192,13 @@ loads with an `apiKey` URL parameter, that key is moved into the cookie and then
 **stripped from the address bar** so it is not left in browser history or
 referrer headers.
 
+**Large samples.** Loading a big sample used to hit the platform's default
+10-second serverless function timeout. The sample-load proxy now **streams the
+upstream JSON straight through** instead of parsing the multi-megabyte body into
+JS objects and re-serializing it (the upstream shape already matches the client
+contract), and the data-heavy routes raise `maxDuration` to 60s — so a large
+sample loads well within the window.
+
 The Studio and Ingestion base URLs can be overridden per session
 (`studioHost` / `ingestionHost`) or globally via `EI_STUDIO_HOST` /
 `EI_INGESTION_HOST`.
@@ -194,6 +207,8 @@ The Studio and Ingestion base URLs can be overridden per session
 
 ## Documentation
 
+- [Multi-label](./docs/multi-label.md) — time-series structured labels: data
+  model, the `structured_labels.labels` file, editing, and upload.
 - [URL parameters](./docs/url-parameters.md) — every supported query parameter.
 - [Edge Impulse extension](./docs/edge-impulse-extension.md) — registering the
   app as a Studio extension and the deep-link URL shape.

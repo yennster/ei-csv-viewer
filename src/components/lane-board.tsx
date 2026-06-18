@@ -70,6 +70,7 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
   const cropSel = useEditorStore((s: EditorState) => s.ui.cropSel);
   const readOnly = useEditorStore((s: EditorState) => s.ui.mode === "viewer");
   const filterMask = useEditorStore((s: EditorState) => s.ui.filter?.mask ?? null);
+  const labels = useEditorStore((s: EditorState) => s.dataset?.labels ?? null);
 
   // ---- actions ----
   const moveChannelToLane = useEditorStore(
@@ -338,6 +339,7 @@ export function LaneBoard({ embed = false, className }: LaneBoardProps) {
                 cropMode={effectiveCrop}
                 cropSel={cropSel}
                 filterMask={filterMask}
+                labels={labels}
                 moveTargets={moveTargets}
                 isOver={overId === `lane:${lane.id}`}
                 onRenameLane={renameLane}

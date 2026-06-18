@@ -21,6 +21,7 @@ import type {
   EISampleMeta,
   EISamplePayload,
 } from "@/lib/types";
+import { normalizeLabels } from "@/lib/labels";
 
 // ---- ids + colors (self-contained; no external deps) ----------------------
 
@@ -351,6 +352,12 @@ export function datasetFromSample(
     payload.frequencyHz ??
     (sample.frequency && sample.frequency > 0 ? sample.frequency : undefined);
 
+  // Multi-label samples carry structured-label segments on the sample object;
+  // normalize them against the loaded sample length so the editor can render +
+  // edit them. Single-label samples leave `labels` empty.
+  const length = channels.reduce((m, c) => Math.max(m, c.values.length), 0);
+  const labels = normalizeLabels(sample.structuredLabels, length);
+
   return {
     channels,
     lanes: [],
@@ -359,6 +366,7 @@ export function datasetFromSample(
     source: "edge-impulse",
     name: sample.filename || sample.label || `sample-${sample.id}`,
     sampleId: sample.id,
+    labels: labels.length > 0 ? labels : undefined,
   };
 }
 
@@ -415,6 +423,15 @@ export async function uploadSample(
 
   const intervalMs = intervalMsFor(dataset);
 
+  // Multi-label upload: when the dataset carries structured-label segments, ship
+  // them so the server routes through the multipart /files endpoint with a
+  // structured_labels.labels sidecar. Normalize against the exported length so
+  // the indices line up with the rows actually uploaded.
+  const labels =
+    dataset.labels && dataset.labels.length > 0
+      ? normalizeLabels(dataset.labels, length)
+      : undefined;
+
   const payload = {
     category: input.category,
     label: input.label,
@@ -425,6 +442,7 @@ export async function uploadSample(
     iat: Math.floor(Date.now() / 1000),
     sensors,
     values,
+    labels,
   };
 
   return requestJson<UploadResult>("/api/ei/upload", {

@@ -27,6 +27,7 @@ import type {
   Lane,
   LanePreset,
   Mode,
+  StructuredLabel,
   UrlPreset,
 } from "@/lib/types";
 
@@ -39,6 +40,14 @@ import {
   cropDataset,
   makeChannelColor,
 } from "@/lib/timeseries";
+import {
+  addLabelSegment,
+  cropLabels,
+  fillGaps,
+  removeLabelAt,
+  renameLabelAt,
+  serializeStructuredLabels,
+} from "@/lib/labels";
 // Same-origin EI client fetchers (the apiKey never reaches this module).
 import {
   connectSession,
@@ -74,6 +83,14 @@ export function buildXs(channels: Channel[], time?: number[]): number[] {
   const xs = new Array<number>(n);
   for (let i = 0; i < n; i++) xs[i] = i;
   return xs;
+}
+
+/** Sample count of a dataset = the longest channel (or explicit time axis). */
+export function datasetLength(ds: Dataset): number {
+  return ds.channels.reduce(
+    (m, c) => Math.max(m, c.values.length),
+    ds.time?.length ?? 0,
+  );
 }
 
 const RESERVED_LANE_IDS = new Set(["unassigned", "new-lane"]);
@@ -250,6 +267,23 @@ export interface EditorState {
   setCropSel: (sel: CropSelection | null) => void;
   setCropActive: (on: boolean) => void;
   setSelectedLaneId: (id: string | null) => void;
+
+  // ---- multi-label (time-series structured labels) ----
+  /** Label the inclusive sample range [start,end] with `label` (carves out any
+   *  overlapping existing segments so the set stays non-overlapping). */
+  addLabel: (start: number, end: number, label: string) => void;
+  /** Rename the segment at `index` (merges with matching neighbours). */
+  renameLabel: (index: number, label: string) => void;
+  /** Delete the segment at `index`. */
+  removeLabel: (index: number) => void;
+  /** Replace the whole label set (normalized by callers as needed). */
+  setLabels: (labels: StructuredLabel[]) => void;
+  /** Fill every uncovered index with `fillLabel` so labels span the full length. */
+  fillLabelGaps: (fillLabel: string) => void;
+  /** Drop all labels. */
+  clearLabels: () => void;
+  /** Serialize the labels as a structured_labels.labels file, or null if none. */
+  exportLabels: () => string | null;
 
   // ---- crop / export / upload ----
   cropToSelection: (start: number, end: number) => Promise<void>;
@@ -706,6 +740,63 @@ export const useEditorStore = create<EditorState>((set, get) => {
       patchUi({ selectedLaneId: id });
     },
 
+    // ---- multi-label (time-series structured labels) ----
+    addLabel(start, end, label) {
+      const ds = get().dataset;
+      if (!ds) return;
+      const name = label.trim();
+      if (!name) return;
+      const length = datasetLength(ds);
+      const labels = addLabelSegment(ds.labels ?? [], start, end, name, length);
+      set({ dataset: { ...ds, labels } });
+    },
+
+    renameLabel(index, label) {
+      const ds = get().dataset;
+      if (!ds || !ds.labels) return;
+      const name = label.trim();
+      if (!name) return;
+      set({ dataset: { ...ds, labels: renameLabelAt(ds.labels, index, name) } });
+    },
+
+    removeLabel(index) {
+      const ds = get().dataset;
+      if (!ds || !ds.labels) return;
+      const labels = removeLabelAt(ds.labels, index);
+      set({ dataset: { ...ds, labels: labels.length ? labels : undefined } });
+    },
+
+    setLabels(labels) {
+      const ds = get().dataset;
+      if (!ds) return;
+      set({ dataset: { ...ds, labels: labels.length ? labels : undefined } });
+    },
+
+    fillLabelGaps(fillLabel) {
+      const ds = get().dataset;
+      if (!ds) return;
+      const name = fillLabel.trim();
+      if (!name) return;
+      const labels = fillGaps(ds.labels ?? [], datasetLength(ds), name);
+      set({ dataset: { ...ds, labels } });
+    },
+
+    clearLabels() {
+      const ds = get().dataset;
+      if (!ds) return;
+      set({ dataset: { ...ds, labels: undefined } });
+    },
+
+    exportLabels() {
+      const ds = get().dataset;
+      if (!ds || !ds.labels || ds.labels.length === 0) return null;
+      const base = (ds.name || "sample").replace(/\.csv$/i, "");
+      const dataFileName = base.toLowerCase().endsWith(".json")
+        ? base
+        : `${base}.json`;
+      return serializeStructuredLabels(dataFileName, ds.labels);
+    },
+
     // ---- crop / export / upload ----
     async cropToSelection(start, end) {
       const ds = get().dataset;
@@ -733,7 +824,14 @@ export const useEditorStore = create<EditorState>((set, get) => {
         }
       }
 
-      const next = cropDataset(ds, lo, hi);
+      const cropped = cropDataset(ds, lo, hi);
+      // cropDataset carries labels through verbatim, but the crop shifts sample
+      // indices — re-index the segments so they still line up after the trim.
+      const labels = ds.labels ? cropLabels(ds.labels, lo, hi) : undefined;
+      const next: Dataset = {
+        ...cropped,
+        labels: labels && labels.length ? labels : undefined,
+      };
       set((s) => ({
         dataset: next,
         xs: buildXs(next.channels, next.time),

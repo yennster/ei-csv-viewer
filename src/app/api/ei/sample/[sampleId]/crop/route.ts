@@ -10,6 +10,9 @@ import { EIRequestError, getSession, studioFetch } from "@/lib/ei-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Cropping a large sample round-trips through Studio; lift the function ceiling
+// above the 10s platform default.
+export const maxDuration = 60;
 
 interface CropBody {
   cropStart?: unknown;
