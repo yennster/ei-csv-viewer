@@ -59,9 +59,37 @@ export interface Lane {
 }
 
 /**
+ * One labeled segment of a time-series sample (Edge Impulse "multi-label" /
+ * structured-labels format). The range is INCLUSIVE in sample-index space:
+ * samples `startIndex..endIndex` carry `label`. Edge Impulse requires the
+ * segments of a sample to be continuous and non-overlapping over its full
+ * length. See https://docs.edgeimpulse.com/studio/projects/data-acquisition/dataset/multi-label
+ */
+export interface StructuredLabel {
+  startIndex: number;
+  endIndex: number;
+  label: string;
+}
+
+/**
+ * The Edge Impulse `structured_labels.labels` file: a JSON sidecar uploaded
+ * alongside a data file that maps each data filename to its ordered list of
+ * labeled segments.
+ */
+export interface StructuredLabelsFile {
+  version: 1;
+  type: "structured-labels";
+  structuredLabels: Record<string, StructuredLabel[]>;
+}
+
+/**
  * The full editor document. `time` is the explicit x-axis (seconds or sample
  * index); when absent the x-axis is derived from intervalMs/frequencyHz or a
  * 0..n-1 index. Channels hold full data; lanes are pure view groupings.
+ *
+ * `labels` holds the time-series multi-label segments (Edge Impulse
+ * structured-labels). When empty/absent the sample is single-label (its label
+ * lives on the EI sample metadata, not here).
  */
 export interface Dataset {
   channels: Channel[];
@@ -72,6 +100,7 @@ export interface Dataset {
   source: "csv" | "edge-impulse";
   name: string;
   sampleId?: number;
+  labels?: StructuredLabel[];
 }
 
 /** Server-side session, persisted only in the httpOnly `ei_session` cookie. */
@@ -101,6 +130,12 @@ export interface EISampleMeta {
   intervalMs?: number;
   totalLengthMs?: number;
   valuesCount?: number;
+  /**
+   * Present on multi-label samples: the ordered structured-label segments over
+   * the sample's index space. Edge Impulse returns these on the raw-data sample
+   * object; we surface them so the editor can render + edit them.
+   */
+  structuredLabels?: StructuredLabel[];
 }
 
 /** Alias kept for callers that refer to a sample row simply as EISample. */

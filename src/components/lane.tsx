@@ -17,7 +17,7 @@ import * as React from "react";
 import { useDroppable } from "@dnd-kit/core";
 import uPlot from "uplot";
 import { Lock, Magnet, MoreVertical, Trash2 } from "lucide-react";
-import type { Channel, Lane as LaneModel } from "@/lib/types";
+import type { Channel, Lane as LaneModel, StructuredLabel } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { laneAutoRange } from "./lane-autorange";
 import { UplotChart, type UplotSeriesSpec, type RangeFn } from "./uplot-chart";
@@ -44,6 +44,8 @@ export interface LaneProps {
   cropSel?: { startIdx: number; endIdx: number } | null;
   /** active formula filter mask (length-N): shade non-matching regions */
   filterMask?: boolean[] | null;
+  /** time-series multi-label segments to paint as colored bands */
+  labels?: StructuredLabel[] | null;
   /** move targets offered by each chip's kebab menu */
   moveTargets: MoveTarget[];
   /** is this lane the current drop target? */
@@ -81,6 +83,7 @@ export const Lane = React.memo(function Lane({
   cropMode,
   cropSel,
   filterMask,
+  labels,
   moveTargets,
   isOver,
   onRenameLane,
@@ -233,6 +236,7 @@ export const Lane = React.memo(function Lane({
             cropMode={cropMode}
             cropSel={cropSel}
             filterMask={filterMask}
+            labels={labels}
             onReady={handleReady}
             onDestroy={handleDestroy}
             onZoom={onZoom}

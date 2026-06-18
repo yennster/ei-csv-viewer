@@ -12,6 +12,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Streaming a large original file can exceed the 10s platform default.
+export const maxDuration = 60;
 
 function parseSampleId(raw: string): number | null {
   const n = Number(raw);

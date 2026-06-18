@@ -19,6 +19,7 @@ import {
   FunctionSquare,
   ListTree,
   PanelLeftOpen,
+  Tags,
   Upload,
 } from "lucide-react";
 import type { AppParams, EICategory } from "@/lib/types";
@@ -36,6 +37,7 @@ import {
   SIDEBAR_MAX_WIDTH,
 } from "@/components/sample-sidebar";
 import { FormulaPanel } from "@/components/formula-panel";
+import { LabelsPanel } from "@/components/labels-panel";
 
 // ---------------------------------------------------------------------------
 // Upload-to-Edge-Impulse dialog
@@ -52,6 +54,7 @@ function UploadDialog({
   const uploadToEdgeImpulse = useEditorStore((s) => s.uploadToEdgeImpulse);
   const busy = useEditorStore((s) => s.ui.busy);
   const message = useEditorStore((s) => s.ui.message);
+  const labelCount = useEditorStore((s) => s.dataset?.labels?.length ?? 0);
 
   const [label, setLabel] = React.useState("");
   const [category, setCategory] = React.useState<EICategory>("training");
@@ -80,6 +83,14 @@ function UploadDialog({
           <span className="text-xs font-medium text-fg-muted">Label</span>
           <Input value={label} onChange={(e) => setLabel(e.target.value)} />
         </label>
+        {labelCount > 0 && (
+          <p className="rounded-md bg-surface-2 px-2 py-1.5 text-[11px] text-fg-muted">
+            <Tags className="mr-1 inline h-3 w-3 align-text-bottom" aria-hidden />
+            Uploading {labelCount} structured label
+            {labelCount === 1 ? "" : "s"} (multi-label sample). The label above is
+            kept as the sample-level fallback.
+          </p>
+        )}
         <label className="grid gap-1">
           <span className="text-xs font-medium text-fg-muted">Category</span>
           <Select
@@ -288,6 +299,9 @@ export function Editor({ params }: { params?: AppParams }) {
         {/* Formula engine: derive + filter are non-destructive analysis, so it
             is available in BOTH editor and viewer mode. */}
         {dataset && <FormulaBar />}
+        {/* Multi-label editor: view in both modes; segment editing is gated to
+            editor mode inside the panel. */}
+        {dataset && <LabelsBar />}
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           {dataset ? <LaneBoard embed={embed} /> : <EmptyState />}
         </div>
@@ -324,6 +338,43 @@ function FormulaBar() {
       {open ? (
         <div className="px-3 pb-3">
           <FormulaPanel />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Collapsible host for the time-series multi-label editor. */
+function LabelsBar() {
+  const [open, setOpen] = React.useState(false);
+  const labelCount = useEditorStore((s) => s.dataset?.labels?.length ?? 0);
+  return (
+    <div className="border-b border-border bg-surface">
+      <div className="flex items-center gap-2 px-3 py-1.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-fg hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <Tags className="h-4 w-4 text-fg-muted" aria-hidden />
+          Labels
+          {labelCount > 0 ? (
+            <span className="rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-semibold text-fg-muted">
+              {labelCount}
+            </span>
+          ) : null}
+          <span className="text-fg-muted">{open ? "▾" : "▸"}</span>
+        </button>
+        {!open && labelCount > 0 ? (
+          <span className="text-[11px] text-fg-muted">
+            {labelCount} segment{labelCount === 1 ? "" : "s"} — multi-label
+          </span>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="px-3 pb-3">
+          <LabelsPanel />
         </div>
       ) : null}
     </div>

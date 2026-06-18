@@ -69,6 +69,101 @@ describe("store.loadDataset lays out an EI sample into lanes", () => {
   });
 });
 
+describe("datasetFromSample carries structured (multi-)labels", () => {
+  it("normalizes structuredLabels from the sample onto the dataset", () => {
+    const payload: EISamplePayload = {
+      sensors: [{ name: "x" }],
+      values: [[0], [1], [2], [3], [4]],
+      intervalMs: 10,
+    };
+    const ds = datasetFromSample(
+      sampleMeta({
+        structuredLabels: [
+          { startIndex: 0, endIndex: 2, label: "a" },
+          { startIndex: 3, endIndex: 4, label: "b" },
+        ],
+      }),
+      payload,
+    );
+    expect(ds.labels).toEqual([
+      { startIndex: 0, endIndex: 2, label: "a" },
+      { startIndex: 3, endIndex: 4, label: "b" },
+    ]);
+  });
+
+  it("leaves labels undefined for a single-label sample", () => {
+    const payload: EISamplePayload = {
+      sensors: [{ name: "x" }],
+      values: [[0], [1]],
+    };
+    expect(datasetFromSample(sampleMeta(), payload).labels).toBeUndefined();
+  });
+});
+
+describe("store label editing", () => {
+  beforeEach(() => {
+    useEditorStore.getState().resetDataset();
+  });
+
+  function load() {
+    const ds: Dataset = {
+      source: "csv",
+      name: "x",
+      lanes: [],
+      channels: [
+        {
+          id: "a",
+          name: "a",
+          values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+          color: "#000000",
+          visible: true,
+        },
+      ],
+    };
+    useEditorStore.getState().loadDataset(ds);
+  }
+
+  it("adds, renames, and removes label segments", () => {
+    load();
+    const s = () => useEditorStore.getState();
+    s().addLabel(0, 4, "walk");
+    s().addLabel(5, 9, "run");
+    expect(s().dataset!.labels).toEqual([
+      { startIndex: 0, endIndex: 4, label: "walk" },
+      { startIndex: 5, endIndex: 9, label: "run" },
+    ]);
+    s().renameLabel(1, "walk"); // merges with neighbour
+    expect(s().dataset!.labels).toEqual([{ startIndex: 0, endIndex: 9, label: "walk" }]);
+    s().removeLabel(0);
+    expect(s().dataset!.labels).toBeUndefined();
+  });
+
+  it("re-indexes labels when the dataset is cropped", async () => {
+    load();
+    const s = () => useEditorStore.getState();
+    s().addLabel(0, 4, "walk");
+    s().addLabel(5, 9, "run");
+    await s().cropToSelection(3, 7);
+    // window [3..7]: walk -> 0..1, run -> 2..4
+    expect(s().dataset!.labels).toEqual([
+      { startIndex: 0, endIndex: 1, label: "walk" },
+      { startIndex: 2, endIndex: 4, label: "run" },
+    ]);
+  });
+
+  it("exports a structured_labels.labels file", () => {
+    load();
+    useEditorStore.getState().addLabel(0, 9, "walk");
+    const json = useEditorStore.getState().exportLabels();
+    expect(json).toBeTruthy();
+    const parsed = JSON.parse(json!);
+    expect(parsed.type).toBe("structured-labels");
+    expect(Object.values(parsed.structuredLabels)[0]).toEqual([
+      { startIndex: 0, endIndex: 9, label: "walk" },
+    ]);
+  });
+});
+
 describe("store.cropToSelection trims full-resolution values", () => {
   beforeEach(() => {
     useEditorStore.getState().resetDataset();
